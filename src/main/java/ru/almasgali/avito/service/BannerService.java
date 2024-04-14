@@ -25,7 +25,9 @@ public class BannerService {
     private final BannerRepository bannerRepository;
 
     public void createBanner(String token, BannerRequest request) {
-        checkToken(token);
+        if (!checkToken(token)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         LocalDateTime time = LocalDateTime.now();
 
         Banner banner = Banner.builder()
@@ -43,7 +45,9 @@ public class BannerService {
 
     @CachePut(value = "banners", key = "#id")
     public void updateBanner(String token, Long id, BannerRequest request) {
-        checkToken(token);
+        if (!checkToken(token)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         Banner banner = bannerRepository.findById(id).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Banner not found."));
 
@@ -57,7 +61,9 @@ public class BannerService {
 
     @CacheEvict(value = "banners", key = "#id")
     public void deleteBanner(String token, Long id) {
-        checkToken(token);
+        if (!checkToken(token)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         try {
             bannerRepository.deleteById(id);
         } catch (NoSuchElementException e) {
@@ -66,7 +72,7 @@ public class BannerService {
     }
 
     public Banner getUserBanner(String token, Long tagId, Long featureId, boolean useLastRevision) {
-        boolean isAdmin =  checkToken(token);
+        boolean isAdmin = checkToken(token);
         try {
             if (useLastRevision) {
                 return bannerRepository.findByTagIdAndFeatureId(tagId, featureId, !isAdmin).getFirst();
@@ -90,7 +96,9 @@ public class BannerService {
             Long featureId,
             int limit,
             int offset) {
-        checkToken(token);
+        if (!checkToken(token)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         if (tagId == null) {
             if (featureId == null) {
                 log.info("LIMIT : {}, OFFSET : {}", limit, offset);
