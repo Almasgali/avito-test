@@ -15,7 +15,7 @@ import ru.almasgali.avito.repository.BannerRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
+import java.util.NoSuchElementException;
 
 @Service
 @Slf4j
@@ -25,7 +25,7 @@ public class BannerService {
     private final BannerRepository bannerRepository;
 
     public void createBanner(String token, BannerRequest request) {
-        checkAdminToken(token);
+        checkToken(token);
         LocalDateTime time = LocalDateTime.now();
 
         Banner banner = Banner.builder()
@@ -43,9 +43,9 @@ public class BannerService {
 
     @CachePut(value = "banners", key = "#id")
     public void updateBanner(String token, Long id, BannerRequest request) {
-        checkAdminToken(token);
+        checkToken(token);
         Banner banner = bannerRepository.findById(id).orElseThrow(() ->
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "Banner not found."));
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Banner not found."));
 
         banner.setTagIds(request.getTagIds());
         banner.setFeatureId(request.getFeatureId());
@@ -57,37 +57,65 @@ public class BannerService {
 
     @CacheEvict(value = "banners", key = "#id")
     public void deleteBanner(String token, Long id) {
-        checkAdminToken(token);
-        bannerRepository.deleteById(id);
+        checkToken(token);
+        try {
+            bannerRepository.deleteById(id);
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
     }
 
     public Banner getUserBanner(String token, Long tagId, Long featureId, boolean useLastRevision) {
-        if (useLastRevision) {
-            return bannerRepository.findByTagIdAndFeatureId(tagId, featureId).getFirst();
-        } else {
-            return getBannerCacheable(tagId, featureId);
+        boolean isAdmin =  checkToken(token);
+        try {
+            if (useLastRevision) {
+                return bannerRepository.findByTagIdAndFeatureId(tagId, featureId, !isAdmin).getFirst();
+            } else {
+                return getBannerCacheable(tagId, featureId, isAdmin);
+            }
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
     }
 
     @Cacheable(value = "banners", key = "#result.id")
-    public Banner getBannerCacheable(Long tagId, Long featureId) {
-        return bannerRepository.findByTagIdAndFeatureId(tagId, featureId).getFirst();
+    public Banner getBannerCacheable(Long tagId, Long featureId, boolean isAdmin) {
+        return bannerRepository.findByTagIdAndFeatureId(tagId, featureId, !isAdmin).getFirst();
     }
 
     @Cacheable(value = "banners")
     public List<Banner> getBannersWithLimitAndOffset(
-            String token, Long tagId,
+            String token,
+            Long tagId,
             Long featureId,
-            String limit,
+            int limit,
             int offset) {
-        checkAdminToken(token);
-        return bannerRepository.findByTagIdAndFeatureIdWithLimitAndOffset(tagId, featureId, limit, offset);
+        checkToken(token);
+        if (tagId == null) {
+            if (featureId == null) {
+                log.info("LIMIT : {}, OFFSET : {}", limit, offset);
+                return bannerRepository.findWithLimitAndOffset(limit, offset);
+            } else {
+                return bannerRepository.findByFeatureIdWithLimitAndOffset(featureId, limit, offset);
+            }
+        } else {
+            if (featureId == null) {
+                return bannerRepository.findByTagIdWithLimitAndOffset(tagId, limit, offset);
+            } else {
+                return bannerRepository.findByTagIdAndFeatureIdWithLimitAndOffset(tagId, featureId, limit, offset);
+            }
+        }
+
     }
 
-    private void checkAdminToken(String token) {
-        if (!Objects.equals(token, "admin_token")) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "user is not admin");
+    private boolean checkToken(String token) {
+        if (token == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authorized");
         }
+        if (token.equals("admin_token")) {
+            return true;
+        }
+        return false;
     }
 
     @CacheEvict(value = "banners", allEntries = true)

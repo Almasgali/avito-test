@@ -1,28 +1,30 @@
 package ru.almasgali.avito.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 @Builder
+@Entity
+@Table(name = "banners")
 @AllArgsConstructor
 @NoArgsConstructor
 public class Banner {
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    @SequenceGenerator(name = "banners_gen", sequenceName = "banners_seq", allocationSize = 1)
     @Id
-    @Column(nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     Long id;
     List<Long> tagIds;
     Long featureId;
+    @JdbcTypeCode(SqlTypes.JSON)
     String body;
     boolean isActive;
     LocalDateTime createdAt;
