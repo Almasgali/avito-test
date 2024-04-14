@@ -15,6 +15,7 @@ import ru.almasgali.avito.repository.BannerRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -23,8 +24,8 @@ public class BannerService {
 
     private final BannerRepository bannerRepository;
 
-    public void createBanner(BannerRequest request) {
-
+    public void createBanner(String token, BannerRequest request) {
+        checkAdminToken(token);
         LocalDateTime time = LocalDateTime.now();
 
         Banner banner = Banner.builder()
@@ -41,7 +42,8 @@ public class BannerService {
     }
 
     @CachePut(value = "banners", key = "#id")
-    public void updateBanner(Long id, BannerRequest request) {
+    public void updateBanner(String token, Long id, BannerRequest request) {
+        checkAdminToken(token);
         Banner banner = bannerRepository.findById(id).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Banner not found."));
 
@@ -54,11 +56,12 @@ public class BannerService {
     }
 
     @CacheEvict(value = "banners", key = "#id")
-    public void deleteBanner(Long id) {
+    public void deleteBanner(String token, Long id) {
+        checkAdminToken(token);
         bannerRepository.deleteById(id);
     }
 
-    public Banner getBanner(Long tagId, Long featureId, boolean useLastRevision) {
+    public Banner getUserBanner(String token, Long tagId, Long featureId, boolean useLastRevision) {
         if (useLastRevision) {
             return bannerRepository.findByTagIdAndFeatureId(tagId, featureId).getFirst();
         } else {
@@ -73,11 +76,18 @@ public class BannerService {
 
     @Cacheable(value = "banners")
     public List<Banner> getBannersWithLimitAndOffset(
-            Long tagId,
+            String token, Long tagId,
             Long featureId,
             String limit,
             int offset) {
+        checkAdminToken(token);
         return bannerRepository.findByTagIdAndFeatureIdWithLimitAndOffset(tagId, featureId, limit, offset);
+    }
+
+    private void checkAdminToken(String token) {
+        if (!Objects.equals(token, "admin_token")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "user is not admin");
+        }
     }
 
     @CacheEvict(value = "banners", allEntries = true)

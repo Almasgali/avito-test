@@ -18,37 +18,46 @@ public class BannerController {
     @GetMapping("/user_banner")
     @ResponseStatus(HttpStatus.OK)
     public String getBannerForUser(
+            @RequestHeader("token") String token,
             @RequestParam long tagId,
             @RequestParam long featureId,
             @RequestParam(required = false, defaultValue = "false") boolean useLastRevision) {
-        return bannerService.getBanner(tagId, featureId, useLastRevision).getBody();
+        return bannerService.getUserBanner(token, tagId, featureId, useLastRevision).getBody();
     }
 
     @GetMapping("/banner")
     @ResponseStatus(HttpStatus.OK)
     public List<Banner> getBanners(
+            @RequestHeader("token") String token,
             @RequestParam(required = false) long tagId,
             @RequestParam(required = false) long featureId,
             @RequestParam(required = false, defaultValue = "ALL") String limit,
             @RequestParam(required = false, defaultValue = "0") int offset) {
-        return bannerService.getBannersWithLimitAndOffset(tagId, featureId, limit, offset);
+        return bannerService.getBannersWithLimitAndOffset(token, tagId, featureId, limit, offset);
     }
 
     @PostMapping("/banner")
     @ResponseStatus(HttpStatus.CREATED)
-    public void createBanner(@RequestBody BannerRequest bannerRequest) {
-        bannerService.createBanner(bannerRequest);
+    public void createBanner(
+            @RequestHeader("token") String token,
+            @RequestBody BannerRequest bannerRequest) {
+        bannerService.createBanner(token, bannerRequest);
     }
 
     @PostMapping("/banner/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void updateBanner(@PathVariable long id, @RequestBody BannerRequest bannerRequest) {
-        bannerService.updateBanner(id, bannerRequest);
+    public void updateBanner(
+            @RequestHeader("token") String token,
+            @PathVariable long id,
+            @RequestBody BannerRequest bannerRequest) {
+        bannerService.updateBanner(token, id, bannerRequest);
     }
 
     @PostMapping("/banner/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteBanner(@PathVariable long id) {
-        bannerService.deleteBanner(id);
+    public void deleteBanner(
+            @RequestHeader("token") String token,
+            @PathVariable long id) {
+        bannerService.deleteBanner(token, id);
     }
 }
